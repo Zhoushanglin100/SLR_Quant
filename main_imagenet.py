@@ -31,9 +31,12 @@ from models.vgg import VGG
 # import admm.admm_v2 as admm
 # import admm.admm_v3 as admm
 
-import wandb
-wandb.init(project='SLR-ADMM-imagenet', entity='zhoushanglin100')
-
+try:
+    import wandb
+    disable_wandb = False
+    wandb.init(project='SLR-ADMM-imagenet', entity='zhoushanglin100')
+except:
+    disable_wandb = True
 #############################################################################################################
 
 model_names = sorted(name for name in tchmodels.__dict__
@@ -148,8 +151,9 @@ parser.add_argument('--ext', type=str, default="None", metavar='N',
 #############################################################################################################
 
 args, unknown = parser.parse_known_args()
-wandb.init(config=args)
-wandb.config.update(args)
+if disable_wandb == False:
+    wandb.init(config=args)
+    wandb.config.update(args)
 
 ####################################################################################
 
@@ -267,7 +271,8 @@ def main_worker(args, gpu, ngpus_per_node):
     
     print("\nArch name is {}".format(args.arch))
     
-    wandb.watch(model)
+    if disable_wandb == False:
+        wandb.watch(model)
     
     # ------------------------------------------------------
     if args.distributed:
@@ -494,8 +499,9 @@ def main_worker(args, gpu, ngpus_per_node):
         # print("Before training")
         # acc1, acc5 = test(args, model, device, test_loader, criterion)
         
-        # wandb.log({"Accuracy@1": acc1})
-        # wandb.log({"Accuracy@5": acc5})
+        # if disable_wandb == False:
+            # wandb.log({"Accuracy@1": acc1})
+            # wandb.log({"Accuracy@5": acc5})
 
         # if args.masked:
         #     model.masks = {}
@@ -531,8 +537,9 @@ def main_worker(args, gpu, ngpus_per_node):
                 admm_train(args, model, device, train_loader, optimizer, criterion, epoch, iteration, name_list)
                 acc1, acc5, best_state, best_model = test_quant(args, model, device, test_loader, criterion, name_list)
 
-                wandb.log({"Accuracy@1": acc1})
-                wandb.log({"Accuracy@5": acc5})
+                if disable_wandb == False:
+                    wandb.log({"Accuracy@1": acc1})
+                    wandb.log({"Accuracy@5": acc5})
 
                 acc_array.append(acc5)
 
@@ -556,7 +563,9 @@ def main_worker(args, gpu, ngpus_per_node):
                     last_model = best_model
                 else:
                     print("Current best test accuracy:{:.2f}%".format(best_acc))
-                wandb.log({"Best Accuracy": best_acc})
+                
+                if disable_wandb == False:
+                    wandb.log({"Best Accuracy": best_acc})
 
             print(acc_array)
 
@@ -572,7 +581,8 @@ def main_worker(args, gpu, ngpus_per_node):
             # epoch = 0
             while (iteration[0] < 2*(args.epochs+args.start_epoch)) and (epoch <= 2*args.epochs+args.start_epoch+50):
                 epoch += 1
-                wandb.log({"Hyper/epoch": epoch})
+                if disable_wandb == False:
+                    wandb.log({"Hyper/epoch": epoch})
 
             # for epoch in range(args.start_epoch, args.epochs + 1):    
                 
@@ -588,8 +598,9 @@ def main_worker(args, gpu, ngpus_per_node):
                 admm_train(args, model, device, train_loader, optimizer, criterion, epoch, iteration, name_list)
                 acc1, acc5, best_state, best_model = test_quant(args, model, device, test_loader, criterion, name_list)
                 
-                wandb.log({"Accuracy@1": acc1})
-                wandb.log({"Accuracy@5": acc5})
+                if disable_wandb == False:
+                    wandb.log({"Accuracy@1": acc1})
+                    wandb.log({"Accuracy@5": acc5})
                 
                 # print("--------------------------")
                 # test(args, model, device, test_loader, criterion)
@@ -621,7 +632,9 @@ def main_worker(args, gpu, ngpus_per_node):
                     last_model = best_model
                 else:
                     print("Current best test accuracy:{:.2f}%".format(best_acc))
-                wandb.log({"Best Accuracy": best_acc})
+    
+                if disable_wandb == False:
+                    wandb.log({"Best Accuracy": best_acc})
 
             print(acc_array)
 
@@ -737,8 +750,9 @@ def admm_train(args, model, device, train_loader, optimizer, criterion, epoch, i
         total_ce = total_ce + float(ce_loss.item())
 
         ### write to W&B log
-        wandb.log({"Loss/train_loss": ce_loss.item()})
-        wandb.log({"Loss/mixed_loss": mixed_loss.item()})
+        if disable_wandb == False:
+            wandb.log({"Loss/train_loss": ce_loss.item()})
+            wandb.log({"Loss/mixed_loss": mixed_loss.item()})
 
         ### measure accuracy and record loss
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
@@ -747,8 +761,9 @@ def admm_train(args, model, device, train_loader, optimizer, criterion, epoch, i
         top5.update(acc5[0], data.size(0))
 
         ### write to W&B log
-        wandb.log({"train_acc@1": acc1[0]})
-        wandb.log({"train_acc@5": acc5[0]})
+        if disable_wandb == False:
+            wandb.log({"train_acc@1": acc1[0]})
+            wandb.log({"train_acc@5": acc5[0]})
 
         ### compute gradient and do SGD step
         optimizer.zero_grad()
@@ -819,7 +834,8 @@ def test(args, model, device, test_loader, criterion):
 
             # test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
             
-            wandb.log({"Loss/test_loss": test_loss.item()})
+            if disable_wandb == False:
+                wandb.log({"Loss/test_loss": test_loss.item()})
 
             ### measure accuracy and record loss
             acc1_test, acc5_test = accuracy(output, target, topk=(1, 5))
@@ -842,8 +858,9 @@ def test(args, model, device, test_loader, criterion):
 
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'.format(top1=top1_test, top5=top5_test))
 
-        wandb.log({"test_acc@1": top1_test.avg})
-        wandb.log({"test_acc@5": top5_test.avg})
+        if disable_wandb == False:
+            wandb.log({"test_acc@1": top1_test.avg})
+            wandb.log({"test_acc@5": top5_test.avg})
 
     return top1_test.avg, top5_test.avg
 
@@ -878,7 +895,8 @@ def adjust_learning_rate(args, optimizer, epoch):
     global print
     lr = args.lr * (0.5 ** (epoch // 20))
     # print("learning rate ={}".format(lr))
-    wandb.log({"Hyper/lr": lr})
+    if disable_wandb == False:
+        wandb.log({"Hyper/lr": lr})
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
