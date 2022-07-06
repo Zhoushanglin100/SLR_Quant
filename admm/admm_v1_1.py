@@ -2,8 +2,11 @@ import numpy as np
 import torch
 from numpy import linalg as LA
 
-import wandb
-
+try:
+    import wandb
+    disable_wandb = False
+except:
+    disable_wandb = True
 # --------------------------------------------------------------
 def apply_quantization(args, model, device=None, name_list=None):
     for name, weight in model.named_parameters():
@@ -263,8 +266,9 @@ def z_u_update(args, model, device, epoch, iteration, batch_idx, name_list=None)
             # print("k = " + str(model.k))
 
             pow = 1-(1/(model.k**args.r))
-            alpha_slr = 1-(1/(args.M*(model.k**pow))) 
-            wandb.log({"Hyper/alpha_slr": alpha_slr})
+            alpha_slr = 1-(1/(args.M*(model.k**pow)))
+            if disable_wandb == False:
+                wandb.log({"Hyper/alpha_slr": alpha_slr})
 
             total_n1 = 0
             total_n2 = 0
@@ -286,18 +290,21 @@ def z_u_update(args, model, device, epoch, iteration, batch_idx, name_list=None)
             satisfied1 = Lagrangian1(model, name_list) 
            
             model.condition1.append(satisfied1)
-            wandb.log({"condition/Condition1": satisfied1})
+            if disable_wandb == False:
+                wandb.log({"condition/Condition1": satisfied1})
 
             if (satisfied1 == 1) or (model.k==1): #if surr. opt. condition is satisfied or k==1
                 
                 iteration[0] += 1
 
                 model.k += 1 #increase k
-                wandb.log({"Hyper/k": model.k})
+                if disable_wandb == False:
+                    wandb.log({"Hyper/k": model.k})
 
                 if total_n1 != 0 and total_n2 != 0:  #if norms are not 0, update stepsize
-                    model.s = alpha_slr * (model.s*total_n1/total_n2) 
-                    wandb.log({"Hyper/savlr_s": model.s})
+                    model.s = alpha_slr * (model.s*total_n1/total_n2)
+                    if disable_wandb == False:
+                        wandb.log({"Hyper/savlr_s": model.s})
                     # print("savlr s:")
                     # print(model.s)
 
@@ -363,7 +370,8 @@ def z_u_update(args, model, device, epoch, iteration, batch_idx, name_list=None)
             satisfied2 = Lagrangian2(model, name_list)
 
             model.condition2.append(satisfied2)
-            wandb.log({"condition/Condition2": satisfied2})
+            if disable_wandb == False:
+                wandb.log({"condition/Condition2": satisfied2})
 
             if satisfied2 == 1 or model.k==1: #if surr. opt. condition is satisfied or k==1
 
@@ -372,15 +380,18 @@ def z_u_update(args, model, device, epoch, iteration, batch_idx, name_list=None)
                 # print("k = " + str(model.k))
 
                 pow = 1 - (1/(model.k**args.r))
-                alpha_slr = 1 - (1/(args.M*(model.k**pow))) 
-                wandb.log({"Hyper/alpha_slr": alpha_slr})
+                alpha_slr = 1 - (1/(args.M*(model.k**pow)))
+                if disable_wandb == False:
+                    wandb.log({"Hyper/alpha_slr": alpha_slr})
                 
                 model.k += 1 #increase k
-                wandb.log({"Hyper/k": model.k})
+                if disable_wandb == False:
+                    wandb.log({"Hyper/k": model.k})
 
                 if total_n1 != 0 and total_n2 != 0:  #if norms are not 0, update stepsize
-                    model.s =  alpha_slr * (model.s*total_n1/total_n2) 
-                    wandb.log({"Hyper/savlr_s": model.s})
+                    model.s =  alpha_slr * (model.s*total_n1/total_n2)
+                    if disable_wandb == False:
+                        wandb.log({"Hyper/savlr_s": model.s})
 
                     # print("alpha:", alpha_slr)
                     # print("savlr s:", model.s)
@@ -595,7 +606,8 @@ def admm_adjust_learning_rate(args, optimizer, epoch):
         admm_step = float(args.admm_epoch) / float(3)  # roughly every 1/3 admm_epoch.
 
         lr = args.lr * (0.1 ** (admm_epoch_offset // admm_step))
-        wandb.log({"Hyper/lr": lr})
+        if disable_wandb == False:
+            wandb.log({"Hyper/lr": lr})
         
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
